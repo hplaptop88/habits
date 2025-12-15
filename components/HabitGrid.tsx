@@ -28,7 +28,7 @@ const HabitItem = memo(({ habit, toggleHabit, deleteHabit }: { habit: Habit, tog
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, height: 0 }}
-            className="group flex flex-col md:flex-row md:items-center p-4 md:px-6 md:py-4 border-b border-slate-50 dark:border-slate-800 bg-white/40 dark:bg-slate-900/40 hover:bg-white/60 dark:hover:bg-slate-900/60 transition-colors backdrop-blur-sm"
+            className="group flex flex-col md:flex-row md:items-center p-4 md:px-6 md:py-4 border-b border-slate-100 dark:border-slate-800 bg-white/40 dark:bg-slate-900/40 hover:bg-white/60 dark:hover:bg-slate-900/60 transition-colors backdrop-blur-sm first:rounded-t-xl"
         >
         {/* Mobile Header */}
         <div className="flex items-center justify-between md:hidden mb-3">
@@ -127,14 +127,14 @@ const HabitGrid: React.FC<HabitGridProps> = ({ onAddHabit }) => {
 
   return (
     <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col h-full ring-1 ring-slate-900/5">
-      <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+      <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-white/50 dark:bg-slate-900/50">
         <h2 className="text-lg font-bold text-slate-900 dark:text-white">Daily Habits</h2>
         <div className="flex items-center space-x-2 text-sm text-slate-500 dark:text-slate-400">
            <span className="flex items-center"><Flame className="w-3 h-3 text-orange-500 mr-1" /> Streak</span>
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto custom-scrollbar">
         {/* Desktop Header */}
         <div className="hidden md:flex items-center px-6 py-3 bg-slate-50/50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 text-xs font-semibold text-slate-400 uppercase tracking-wider">
             <div className="w-8"></div>

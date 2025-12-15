@@ -44,6 +44,7 @@ export const HabitProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   // --- Helpers ---
   const generateQuest = useCallback((): Quest => {
+    // Basic scaling logic
     const template = QUEST_TEMPLATES[Math.floor(Math.random() * QUEST_TEMPLATES.length)];
     
     // Scale difficulty with level
@@ -86,10 +87,8 @@ export const HabitProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             return { ...q, progress: Math.min(newProgress, q.target) };
         });
 
-        // Replace completed quests after short delay
+        // Replace completed quests immediately with new generated quests
         if (questCompleted) {
-             // We can't use setTimeout inside the state updater easily to trigger the NEW quest
-             // but we can just map it here to be immediate for "Infinite" feel
             return nextQuests.map(q => {
                 if (q.completed) return generateQuest();
                 return q;
@@ -139,7 +138,8 @@ export const HabitProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         setMoodLog([]);
         setBadges([]);
         toast.error("All data has been wiped.", { description: "Starting fresh!" });
-        window.location.reload();
+        // Force reload to clear React state if needed, or just let state update handle it
+        setTimeout(() => window.location.reload(), 500);
     }
   };
 
@@ -200,7 +200,7 @@ export const HabitProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       }
       return h;
     }));
-  }, [user.level]); // Added user.level dependency for quest scaling
+  }, [user.level]);
 
   const addHabit = (habitData: Partial<Habit>) => {
     const newHabit: Habit = {
