@@ -113,7 +113,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ habits, moodLog }) => {
         </div>
       </div>
 
-      <Heatmap />
+      <Heatmap habits={habits} />
     </div>
   );
 };

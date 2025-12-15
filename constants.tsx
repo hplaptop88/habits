@@ -2,6 +2,8 @@ import { User, Habit, Quest, Badge, ShopItem } from './types';
 import { Trophy, Flame, Zap, Calendar, Heart, BookOpen, Dumbbell, Briefcase } from 'lucide-react';
 import React from 'react';
 
+export const APP_VERSION = '1.0.0';
+
 // Helper to generate mock history with date keys
 const generateMockHistory = (statuses: boolean[]): Record<string, boolean> => {
   const history: Record<string, boolean> = {};

@@ -86,4 +86,5 @@ export interface HabitContextType {
   isDarkMode: boolean;
   currentView: 'dashboard' | 'analytics';
   setCurrentView: (view: 'dashboard' | 'analytics') => void;
+  resetApp: () => void;
 }

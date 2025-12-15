@@ -1,21 +1,45 @@
 import React, { useMemo } from 'react';
+import { Habit } from '../types';
+import { subDays, format } from 'date-fns';
 
-const Heatmap: React.FC = () => {
-  // Generate mock data for the year - Memoized to prevent recalculation on every render
+interface HeatmapProps {
+    habits: Habit[];
+}
+
+const Heatmap: React.FC<HeatmapProps> = ({ habits }) => {
+  // Generate real data based on habit history
   const data = useMemo(() => {
     const arr = [];
-    const now = new Date();
+    const today = new Date();
+    // 364 days ago to today
     for (let i = 0; i < 365; i++) {
-        const d = new Date(now);
-        d.setDate(d.getDate() - (364 - i));
-        // Random intensity 0-4
+        const d = subDays(today, 364 - i);
+        const dateStr = format(d, 'yyyy-MM-dd');
+        
+        let completionCount = 0;
+        habits.forEach(h => {
+            if (h.history && h.history[dateStr]) {
+                completionCount++;
+            }
+        });
+
+        // Determine intensity level (0-4) based on number of completed habits
+        // Level 0: 0, Level 1: 1, Level 2: 2, Level 3: 3-4, Level 4: 5+
+        let level = 0;
+        if (completionCount === 0) level = 0;
+        else if (completionCount === 1) level = 1;
+        else if (completionCount === 2) level = 2;
+        else if (completionCount <= 4) level = 3;
+        else level = 4;
+
         arr.push({
             date: d,
-            level: Math.random() > 0.3 ? Math.floor(Math.random() * 5) : 0
+            level: level,
+            count: completionCount
         });
     }
     return arr;
-  }, []); // Empty dependency array means this runs once on mount
+  }, [habits]);
 
   const getColor = (level: number) => {
     switch(level) {
@@ -31,19 +55,22 @@ const Heatmap: React.FC = () => {
   return (
     <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm p-6 overflow-hidden">
         <h3 className="font-bold text-slate-900 dark:text-white mb-6">Yearly Consistency</h3>
-        <div className="overflow-x-auto pb-2">
+        <div className="overflow-x-auto pb-2 custom-scrollbar">
             <div className="min-w-[800px] flex gap-1">
                 {/* 52 Weeks roughly */}
-                {Array.from({ length: 52 }).map((_, weekIndex) => (
+                {Array.from({ length: 53 }).map((_, weekIndex) => (
                     <div key={weekIndex} className="grid grid-rows-7 gap-1">
                         {Array.from({ length: 7 }).map((_, dayIndex) => {
                              const dataIndex = weekIndex * 7 + dayIndex;
-                             const item = data[dataIndex] || { level: 0 };
+                             // Bound check
+                             if (dataIndex >= data.length) return null;
+                             
+                             const item = data[dataIndex];
                              return (
                                 <div 
                                     key={dayIndex} 
                                     className={`w-3 h-3 rounded-sm ${getColor(item.level)} hover:ring-2 hover:ring-slate-300 transition-all`}
-                                    title={item.date ? item.date.toDateString() : ''}
+                                    title={`${item.date.toDateString()}: ${item.count} habits`}
                                 />
                              );
                         })}

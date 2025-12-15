@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useHabit } from '../context/HabitContext';
 import { LayoutDashboard, BarChart2, Settings, Coins, Flame, Menu, X, ChevronDown, User as UserIcon, LogOut, Sun, Moon, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { APP_VERSION } from '../constants';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -100,11 +101,14 @@ const Layout: React.FC<LayoutProps> = ({ children, onOpenShop }) => {
                          <div className="border-t border-slate-100 dark:border-slate-700 mt-2 pt-2">
                              <div className="px-4 py-1 text-xs font-bold text-slate-400 uppercase tracking-wider">Danger Zone</div>
                              <button 
-                                onClick={resetApp}
+                                onClick={() => { setIsProfileOpen(false); resetApp(); }}
                                 className="w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center transition-colors"
                              >
                                 <Trash2 className="w-4 h-4 mr-3" /> Reset All Data
                              </button>
+                         </div>
+                         <div className="text-[10px] text-center text-slate-300 dark:text-slate-600 py-1">
+                            v{APP_VERSION}
                          </div>
                       </motion.div>
                     )}
@@ -161,9 +165,12 @@ const Layout: React.FC<LayoutProps> = ({ children, onOpenShop }) => {
                             {isDarkMode ? 'Light Mode' : 'Dark Mode'}
                         </button>
 
-                         <button onClick={resetApp} className="w-full flex items-center p-3 rounded-xl text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 active:scale-98 mt-4 border border-red-100 dark:border-red-900/30">
+                         <button onClick={() => { setIsMenuOpen(false); resetApp(); }} className="w-full flex items-center p-3 rounded-xl text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 active:scale-98 mt-4 border border-red-100 dark:border-red-900/30">
                             <Trash2 className="w-5 h-5 mr-3" /> Reset App Data
                         </button>
+                        <div className="text-center text-xs text-slate-400 py-2">
+                            Version {APP_VERSION}
+                        </div>
                     </div>
                 </motion.div>
             )}
