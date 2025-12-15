@@ -47,6 +47,16 @@ export interface Badge {
   category: 'streak' | 'total' | 'special';
 }
 
+export interface CustomBadge {
+  id: string;
+  name: string;
+  icon: string;
+  description: string;
+  criteriaType: 'streak' | 'xp' | 'habit_count';
+  criteriaValue: number;
+  isUnlocked: boolean;
+}
+
 export interface ShopItem {
   id: string;
   name: string;
@@ -75,11 +85,14 @@ export interface HabitContextType {
   habits: Habit[];
   quests: Quest[];
   badges: Badge[];
+  customBadges: CustomBadge[];
   moodLog: MoodLog[];
   toggleHabit: (id: string) => void;
   addHabit: (habit: Partial<Habit>) => void;
+  updateHabit: (id: string, updates: Partial<Habit>) => void;
   deleteHabit: (id: string) => void;
   reorderHabits: (newOrder: Habit[]) => void;
+  createCustomBadge: (badge: Omit<CustomBadge, 'id' | 'isUnlocked'>) => void;
   logMood: (rating: number) => void;
   buyItem: (item: ShopItem) => void;
   toggleTheme: () => void;

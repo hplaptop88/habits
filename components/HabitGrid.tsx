@@ -1,7 +1,7 @@
 import React, { memo } from 'react';
 import { Habit } from '../types';
 import { CATEGORY_ICONS } from '../constants';
-import { Flame, Plus, Trash2, GripVertical } from 'lucide-react';
+import { Flame, Plus, Trash2, GripVertical, Settings2 } from 'lucide-react';
 import { motion, Reorder, AnimatePresence } from 'framer-motion';
 import { useHabit } from '../context/HabitContext';
 
@@ -21,7 +21,7 @@ const AnimatedCheckmark = ({ isChecked }: { isChecked: boolean }) => (
 );
 
 // Memoized Individual Habit Item
-const HabitItem = memo(({ habit, toggleHabit, deleteHabit }: { habit: Habit, toggleHabit: (id: string) => void, deleteHabit: (id: string) => void }) => {
+const HabitItem = memo(({ habit, toggleHabit, deleteHabit, onEdit }: { habit: Habit, toggleHabit: (id: string) => void, deleteHabit: (id: string) => void, onEdit: (h: Habit) => void }) => {
     return (
         <Reorder.Item 
             value={habit}
@@ -34,7 +34,7 @@ const HabitItem = memo(({ habit, toggleHabit, deleteHabit }: { habit: Habit, tog
         <div className="flex items-center justify-between md:hidden mb-3">
             <div className="flex items-center">
                     <GripVertical className="w-5 h-5 text-slate-300 mr-2" />
-                <div>
+                <div onClick={() => onEdit(habit)}>
                     <h3 className="font-semibold text-slate-900 dark:text-slate-100">{habit.name}</h3>
                         <div className="flex items-center text-xs text-slate-500 mt-0.5">
                         {CATEGORY_ICONS[habit.category]} 
@@ -54,10 +54,10 @@ const HabitItem = memo(({ habit, toggleHabit, deleteHabit }: { habit: Habit, tog
         </div>
         
         {/* Info Desktop */}
-        <div className="flex-1 hidden md:block select-none">
+        <div className="flex-1 hidden md:block select-none cursor-pointer" onClick={() => onEdit(habit)}>
             <div className="flex items-center">
                 {CATEGORY_ICONS[habit.category]}
-                <span className="ml-3 font-medium text-slate-800 dark:text-slate-200">{habit.name}</span>
+                <span className="ml-3 font-medium text-slate-800 dark:text-slate-200 group-hover:text-brand-600 transition-colors">{habit.name}</span>
             </div>
             <p className="text-xs text-slate-400 pl-8 mt-0.5">{habit.description}</p>
         </div>
@@ -99,7 +99,14 @@ const HabitItem = memo(({ habit, toggleHabit, deleteHabit }: { habit: Habit, tog
         </div>
 
         {/* Actions */}
-        <div className="hidden md:flex w-12 justify-center md:opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="hidden md:flex w-16 justify-end space-x-1 md:opacity-0 group-hover:opacity-100 transition-opacity">
+            <button 
+                onClick={() => onEdit(habit)}
+                className="text-slate-400 hover:text-brand-500 p-2 rounded-full hover:bg-brand-50 dark:hover:bg-brand-900/20 transition-colors"
+                title="Edit Habit"
+            >
+                <Settings2 className="w-4 h-4" />
+            </button>
             <button 
                 onClick={() => deleteHabit(habit.id)}
                 className="text-slate-400 hover:text-red-500 p-2 rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
@@ -114,13 +121,13 @@ const HabitItem = memo(({ habit, toggleHabit, deleteHabit }: { habit: Habit, tog
 
 interface HabitGridProps {
   onAddHabit: () => void;
+  onEditHabit: (habit: Habit) => void;
 }
 
-const HabitGrid: React.FC<HabitGridProps> = ({ onAddHabit }) => {
+const HabitGrid: React.FC<HabitGridProps> = ({ onAddHabit, onEditHabit }) => {
   const { habits, toggleHabit, deleteHabit, reorderHabits } = useHabit();
   const weekDays = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
-  // Handle reorder
   const handleReorder = (newOrder: Habit[]) => {
       reorderHabits(newOrder);
   };
@@ -145,13 +152,13 @@ const HabitGrid: React.FC<HabitGridProps> = ({ onAddHabit }) => {
                     <span key={i} className="w-8 text-center">{d}</span>
                 ))}
             </div>
-            <div className="w-12 text-center">Act</div>
+            <div className="w-16 text-center">Act</div>
         </div>
 
         <Reorder.Group axis="y" values={habits} onReorder={handleReorder} className="space-y-0">
           <AnimatePresence initial={false}>
             {habits.map((habit) => (
-                <HabitItem key={habit.id} habit={habit} toggleHabit={toggleHabit} deleteHabit={deleteHabit} />
+                <HabitItem key={habit.id} habit={habit} toggleHabit={toggleHabit} deleteHabit={deleteHabit} onEdit={onEditHabit} />
             ))}
           </AnimatePresence>
         </Reorder.Group>

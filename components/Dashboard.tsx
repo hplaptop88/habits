@@ -3,17 +3,20 @@ import { useHabit } from '../context/HabitContext';
 import HabitGrid from './HabitGrid';
 import QuestWidget from './QuestWidget';
 import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis, YAxis, CartesianGrid } from 'recharts';
-import { Smile, Frown, Meh, Sparkles, MessageSquarePlus } from 'lucide-react';
+import { Smile, Frown, Meh, Sparkles, MessageSquarePlus, Award, Plus } from 'lucide-react';
 import { getHabitInsights } from '../services/geminiService';
 import { AnimatePresence, motion } from 'framer-motion';
 import { format, subDays, startOfWeek, addDays, isSameDay, parseISO } from 'date-fns';
+import { Habit } from '../types';
 
 interface DashboardProps {
   onAddHabit: () => void;
+  onEditHabit: (habit: Habit) => void;
+  onOpenBadgeDesigner: () => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ onAddHabit }) => {
-  const { user, habits, quests, badges, moodLog, logMood } = useHabit();
+const Dashboard: React.FC<DashboardProps> = ({ onAddHabit, onEditHabit, onOpenBadgeDesigner }) => {
+  const { user, habits, quests, badges, customBadges, moodLog, logMood } = useHabit();
   const [insight, setInsight] = useState<string | null>(null);
   const [loadingInsight, setLoadingInsight] = useState(false);
   const [showAiChat, setShowAiChat] = useState(false);
@@ -63,6 +66,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onAddHabit }) => {
       const sum = weeklyData.reduce((acc, curr) => acc + curr.score, 0);
       return Math.round(sum / weeklyData.length);
   }, [weeklyData]);
+
+  const allBadges = [...badges, ...customBadges.filter(b => b.isUnlocked)];
 
   return (
     <div className="space-y-6 relative">
@@ -148,7 +153,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onAddHabit }) => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column: Habits */}
         <div className="lg:col-span-2 h-full">
-            <HabitGrid onAddHabit={onAddHabit} />
+            <HabitGrid onAddHabit={onAddHabit} onEditHabit={onEditHabit} />
         </div>
 
         {/* Right Column: Widgets */}
@@ -178,17 +183,21 @@ const Dashboard: React.FC<DashboardProps> = ({ onAddHabit }) => {
             {/* Badges */}
             <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm p-6">
                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-bold text-slate-900 dark:text-white">Recent Badges</h3>
-                    <button className="text-xs font-semibold text-brand-600 dark:text-brand-400 hover:text-brand-700">View All</button>
+                    <h3 className="font-bold text-slate-900 dark:text-white">Badges</h3>
+                    <button onClick={onOpenBadgeDesigner} className="text-xs font-semibold text-brand-600 dark:text-brand-400 hover:text-brand-700 bg-brand-50 dark:bg-brand-900/20 px-2 py-1 rounded flex items-center">
+                        <Plus className="w-3 h-3 mr-1" /> Designer
+                    </button>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
-                    {badges.map(badge => (
+                    {allBadges.map(badge => (
                         <div key={badge.id} className="aspect-square bg-slate-50 dark:bg-slate-800/50 rounded-xl flex flex-col items-center justify-center p-2 text-center border border-slate-100 dark:border-slate-700 hover:border-brand-200 transition-colors cursor-pointer group relative">
-                            <span className="text-2xl mb-1">{badge.icon}</span>
-                            <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium leading-tight">{badge.name}</span>
+                            <span className="text-2xl mb-1">
+                                {typeof badge.icon === 'string' && badge.icon.length > 2 ? <Award className="w-6 h-6 text-brand-500"/> : badge.icon}
+                            </span>
+                            <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium leading-tight truncate w-full">{badge.name}</span>
                         </div>
                     ))}
-                    {badges.length < 3 && Array.from({ length: 3 - badges.length }).map((_, i) => (
+                    {allBadges.length < 3 && Array.from({ length: 3 - allBadges.length }).map((_, i) => (
                         <div key={i} className="aspect-square border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl flex items-center justify-center text-slate-300 dark:text-slate-600">
                             ?
                         </div>

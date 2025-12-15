@@ -1,10 +1,10 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { User, Habit, Quest, Badge, MoodLog, ShopItem, HabitContextType } from '../types';
+import { User, Habit, Quest, Badge, MoodLog, ShopItem, HabitContextType, CustomBadge } from '../types';
 import { INITIAL_USER, MOCK_HABITS, DAILY_QUESTS, QUEST_TEMPLATES, RECENT_BADGES } from '../constants';
 import { toast } from 'sonner';
 import confetti from 'canvas-confetti';
 import { playSound } from '../services/soundService';
-import { format, subDays, differenceInDays, parseISO, isSameDay } from 'date-fns';
+import { format, subDays, differenceInDays, parseISO, isSameDay, getDay } from 'date-fns';
 
 const HabitContext = createContext<HabitContextType | undefined>(undefined);
 
@@ -14,6 +14,7 @@ export const HabitProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [habits, setHabits] = useState<Habit[]>(MOCK_HABITS);
   const [quests, setQuests] = useState<Quest[]>(DAILY_QUESTS);
   const [badges, setBadges] = useState<Badge[]>(RECENT_BADGES);
+  const [customBadges, setCustomBadges] = useState<CustomBadge[]>([]);
   const [moodLog, setMoodLog] = useState<MoodLog[]>([]);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [currentView, setCurrentView] = useState<'dashboard' | 'analytics'>('dashboard');
@@ -28,6 +29,7 @@ export const HabitProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const storedMood = localStorage.getItem('hf_mood');
     const storedQuests = localStorage.getItem('hf_quests');
     const storedTheme = localStorage.getItem('hf_theme');
+    const storedBadges = localStorage.getItem('hf_custom_badges');
 
     let currentHabits = MOCK_HABITS;
     let currentUser = INITIAL_USER;
@@ -42,6 +44,7 @@ export const HabitProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
     if (storedMood) setMoodLog(JSON.parse(storedMood));
     if (storedQuests) setQuests(JSON.parse(storedQuests));
+    if (storedBadges) setCustomBadges(JSON.parse(storedBadges));
     if (storedTheme === 'dark') {
       setIsDarkMode(true);
       document.documentElement.classList.add('dark');
@@ -56,51 +59,59 @@ export const HabitProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     localStorage.setItem('hf_habits', JSON.stringify(habits));
     localStorage.setItem('hf_mood', JSON.stringify(moodLog));
     localStorage.setItem('hf_quests', JSON.stringify(quests));
-  }, [user, habits, moodLog, quests]);
+    localStorage.setItem('hf_custom_badges', JSON.stringify(customBadges));
+  }, [user, habits, moodLog, quests, customBadges]);
 
   // --- Core Logic: Streak Audit ---
   const checkStreaks = (currentHabits: Habit[], currentUser: User) => {
     const today = new Date();
-    const todayStr = format(today, 'yyyy-MM-dd');
-    const yesterday = subDays(today, 1);
     
     let freezesUsed = 0;
     let habitsUpdated = false;
 
     const updatedHabits = currentHabits.map(h => {
-        // If no history, ignore
         if (!h.lastCompletedDate) return h;
         if (h.streak === 0) return h;
 
         const lastDate = parseISO(h.lastCompletedDate);
-        
-        // If completed today, all good
         if (isSameDay(lastDate, today)) {
              return { ...h, completedToday: true };
         }
 
-        // If completed yesterday, streak is safe, reset daily completion
-        if (isSameDay(lastDate, yesterday)) {
+        // Determine expected last completion date based on frequency
+        let expectedDate = subDays(today, 1);
+        
+        if (h.frequency === 'specific_days' && h.specificDays && h.specificDays.length > 0) {
+            // Find the most recent day in specificDays before today
+            let d = subDays(today, 1);
+            let found = false;
+            // Look back up to 7 days
+            for(let i=0; i<7; i++) {
+                const dayOfWeek = getDay(d); // 0-6
+                if (h.specificDays.includes(dayOfWeek)) {
+                    expectedDate = d;
+                    found = true;
+                    break;
+                }
+                d = subDays(d, 1);
+            }
+            if (!found) expectedDate = lastDate; // Should not happen if configured right
+        }
+
+        // If completed on the expected date (or later, which implies today which we caught above), streak safe
+        // We compare timestamps to ignore time of day
+        if (lastDate.getTime() >= expectedDate.setHours(0,0,0,0)) {
             return { ...h, completedToday: false };
         }
 
-        // Gap detected (>1 day)
-        const diff = differenceInDays(today, lastDate);
-        
-        if (diff > 1) {
-            // Check for Freeze
-            if (currentUser.streakFreezes > freezesUsed) {
-                freezesUsed++;
-                // Freeze consumed, streak maintained (but not incremented), completedToday false
-                return { ...h, completedToday: false }; 
-            } else {
-                // Streak Broken
-                habitsUpdated = true;
-                return { ...h, streak: 0, completedToday: false };
-            }
+        // Gap detected
+        if (currentUser.streakFreezes > freezesUsed) {
+            freezesUsed++;
+            return { ...h, completedToday: false }; 
+        } else {
+            habitsUpdated = true;
+            return { ...h, streak: 0, completedToday: false };
         }
-        
-        return { ...h, completedToday: false };
     });
 
     if (freezesUsed > 0) {
@@ -109,12 +120,10 @@ export const HabitProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         setHabits(updatedHabits);
     } else if (habitsUpdated) {
         setHabits(updatedHabits);
-        // Only notify if we didn't just initialize the mock data
         if (currentUser.id !== 'u1' || currentHabits.length > 2) {
              toast.warning("Some streaks were lost due to inactivity.");
         }
     } else {
-        // Just update the completedToday state if we are entering a new day naturally
         setHabits(updatedHabits);
     }
   };
@@ -122,7 +131,6 @@ export const HabitProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   // --- Helpers ---
   const generateQuest = useCallback((): Quest => {
     const template = QUEST_TEMPLATES[Math.floor(Math.random() * QUEST_TEMPLATES.length)];
-    // RPG Curve: Difficulty increases slower than linear
     const levelMultiplier = 1 + (Math.log(user.level + 1) * 0.5); 
     
     const min = Math.ceil(template.min * levelMultiplier);
@@ -150,7 +158,6 @@ export const HabitProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             if (q.completed) return q; 
             
             let newProgress = q.progress;
-            // Simple string matching for quest types
             if (type === 'habit' && (q.title.toLowerCase().includes('habit') || q.title.toLowerCase().includes('streak'))) newProgress += amount;
             if (type === 'mood' && q.title.toLowerCase().includes('mood')) newProgress += amount;
             
@@ -164,14 +171,14 @@ export const HabitProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         });
 
         if (questCompleted) {
-            // Replace after a short delay in UI (handled by caller side effects usually, but here we replace data immediately)
+             // Immediate quest replacement logic
              return nextQuests.map(q => q.completed ? generateQuest() : q);
         }
         return nextQuests;
     });
 
     if (questCompleted) {
-        playSound('success');
+        playSound('quest');
         confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
         toast.success("Quest Completed!", { description: `+${xpGained} XP | +${coinsGained} Coins` });
         gainXp(xpGained);
@@ -185,25 +192,54 @@ export const HabitProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           if (newXp >= u.xpToNextLevel) {
               // Level Up!
               setTimeout(() => {
-                  playSound('success');
+                  playSound('levelup');
                   confetti({ particleCount: 200, spread: 120, startVelocity: 45 });
                   toast("LEVEL UP!", { description: `Welcome to level ${u.level + 1}!`, className: 'bg-accent-gold text-black font-bold' });
               }, 500);
 
-              // Standard RPG Curve: 100 * (level ^ 1.2)
               const nextLevel = u.level + 1;
               const nextReq = Math.floor(100 * Math.pow(nextLevel, 1.2));
+              checkCustomBadges('xp', newXp); // Check badges on level up context (using total XP roughly)
 
               return {
                   ...u,
                   level: nextLevel,
                   xp: newXp - u.xpToNextLevel,
                   xpToNextLevel: nextReq,
-                  coins: u.coins + 25 // Level up bonus
+                  coins: u.coins + 25 
               };
           }
+          checkCustomBadges('xp', u.level * 100 + newXp); // Rough total XP estimate for badges
           return { ...u, xp: newXp };
       });
+  };
+
+  const checkCustomBadges = (type: 'streak' | 'xp' | 'habit_count', value: number) => {
+      setCustomBadges(prev => {
+          let unlocked = false;
+          const updated = prev.map(badge => {
+              if (badge.isUnlocked) return badge;
+              if (badge.criteriaType === type && value >= badge.criteriaValue) {
+                  unlocked = true;
+                  toast.success(`Badge Unlocked: ${badge.name}`, { icon: badge.icon });
+                  playSound('quest');
+                  return { ...badge, isUnlocked: true };
+              }
+              return badge;
+          });
+          if (unlocked) return updated;
+          return prev;
+      });
+  };
+
+  const createCustomBadge = (badgeData: Omit<CustomBadge, 'id' | 'isUnlocked'>) => {
+      const newBadge: CustomBadge = {
+          ...badgeData,
+          id: `cb-${Date.now()}`,
+          isUnlocked: false
+      };
+      setCustomBadges(prev => [...prev, newBadge]);
+      toast.success("Custom Badge Created!");
   };
 
   // --- Actions ---
@@ -211,25 +247,19 @@ export const HabitProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const resetApp = () => {
     if (window.confirm("Are you sure you want to delete EVERYTHING? This cannot be undone.")) {
         try {
-            localStorage.removeItem('hf_user');
-            localStorage.removeItem('hf_habits');
-            localStorage.removeItem('hf_mood');
-            localStorage.removeItem('hf_quests');
-            localStorage.removeItem('hf_theme');
-            localStorage.clear(); // Nuclear option just in case
-
+            localStorage.clear();
             setUser(INITIAL_USER);
             setHabits(MOCK_HABITS);
             setQuests(DAILY_QUESTS);
             setMoodLog([]);
             setBadges([]);
+            setCustomBadges([]);
             
             toast.success("All data has been wiped. Restarting...");
-            // Force reload to clear any memory states
             setTimeout(() => window.location.reload(), 800);
         } catch (e) {
             console.error("Reset failed", e);
-            toast.error("Failed to reset data. Please clear browser cache manually.");
+            toast.error("Failed to reset data.");
         }
     }
   };
@@ -251,33 +281,30 @@ export const HabitProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         const isCompleting = !h.completedToday;
         const todayStr = getTodayStr();
         
+        const newStreak = isCompleting ? h.streak + 1 : Math.max(0, h.streak - 1);
+        
         if (isCompleting) {
           playSound('success');
           confetti({ particleCount: 40, spread: 50, origin: { y: 0.7 }, disableForReducedMotion: true });
           updateQuests('habit');
           gainXp(10);
-          setUser(u => ({ ...u, coins: u.coins + 2 })); // Small coin reward for habit
+          setUser(u => ({ ...u, coins: u.coins + 2 })); 
+          checkCustomBadges('streak', newStreak);
+          checkCustomBadges('habit_count', 1); // Incrementally hard to check strictly here without total count, simplified
         } else {
-             // Undo completion
              setUser(u => ({ ...u, xp: Math.max(0, u.xp - 10) }));
         }
 
-        // Optimistic Streak Logic for UI
-        const newStreak = isCompleting ? h.streak + 1 : Math.max(0, h.streak - 1);
         const newHistory = { ...h.history };
-        
-        if (isCompleting) {
-            newHistory[todayStr] = true;
-        } else {
-            delete newHistory[todayStr];
-        }
+        if (isCompleting) newHistory[todayStr] = true;
+        else delete newHistory[todayStr];
 
         return {
           ...h,
           completedToday: isCompleting,
           streak: newStreak,
           history: newHistory,
-          lastCompletedDate: isCompleting ? todayStr : h.lastCompletedDate // technically if undoing, we might want to revert to prev date, but simplified for now
+          lastCompletedDate: isCompleting ? todayStr : h.lastCompletedDate
         };
       }
       return h;
@@ -303,6 +330,11 @@ export const HabitProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     toast.success('Habit created');
   };
 
+  const updateHabit = (id: string, updates: Partial<Habit>) => {
+      setHabits(prev => prev.map(h => h.id === id ? { ...h, ...updates } : h));
+      toast.success('Habit updated');
+  };
+
   const deleteHabit = (id: string) => {
     setHabits(prev => prev.filter(h => h.id !== id));
     toast('Habit deleted', { icon: '🗑️' });
@@ -314,7 +346,6 @@ export const HabitProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const logMood = (rating: number) => {
     const todayStr = getTodayStr();
-    // Check if already logged today
     if (moodLog.some(m => m.date === todayStr)) {
         toast.info("You already logged your mood today!");
         return;
@@ -348,9 +379,9 @@ export const HabitProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   return (
     <HabitContext.Provider value={{
-      user, habits, quests, badges, moodLog,
-      toggleHabit, addHabit, deleteHabit, reorderHabits, logMood, buyItem, toggleTheme, isDarkMode,
-      currentView, setCurrentView, resetApp
+      user, habits, quests, badges, moodLog, customBadges,
+      toggleHabit, addHabit, updateHabit, deleteHabit, reorderHabits, logMood, buyItem, toggleTheme, createCustomBadge,
+      isDarkMode, currentView, setCurrentView, resetApp
     }}>
       {children}
     </HabitContext.Provider>

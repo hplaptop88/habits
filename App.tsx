@@ -3,25 +3,51 @@ import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
 import ShopModal from './components/ShopModal';
 import AddHabitModal from './components/AddHabitModal';
+import BadgeDesignerModal from './components/BadgeDesignerModal';
 import { SHOP_ITEMS } from './constants';
 import { Loader2 } from 'lucide-react';
 import { HabitProvider, useHabit } from './context/HabitContext';
 import { Toaster } from 'sonner';
+import { Habit } from './types';
 
 // Lazy load Analytics view
 const AnalyticsView = React.lazy(() => import('./components/AnalyticsView'));
 
 // Inner Component to use Context
 const AppContent = () => {
-    const { user, habits, moodLog, currentView, addHabit, buyItem } = useHabit();
+    const { user, habits, moodLog, currentView, addHabit, updateHabit, buyItem } = useHabit();
     const [isShopOpen, setIsShopOpen] = useState(false);
     const [isAddHabitOpen, setIsAddHabitOpen] = useState(false);
+    const [isBadgeDesignerOpen, setIsBadgeDesignerOpen] = useState(false);
+    const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
+
+    const handleSaveHabit = (data: any) => {
+        if (editingHabit) {
+            updateHabit(editingHabit.id, data);
+        } else {
+            addHabit(data);
+        }
+    };
+
+    const handleEditHabit = (habit: Habit) => {
+        setEditingHabit(habit);
+        setIsAddHabitOpen(true);
+    };
+
+    const handleCloseHabitModal = () => {
+        setIsAddHabitOpen(false);
+        setEditingHabit(null);
+    };
 
     return (
         <>
             <Layout onOpenShop={() => setIsShopOpen(true)}>
                 {currentView === 'dashboard' ? (
-                    <Dashboard onAddHabit={() => setIsAddHabitOpen(true)} />
+                    <Dashboard 
+                        onAddHabit={() => setIsAddHabitOpen(true)} 
+                        onEditHabit={handleEditHabit}
+                        onOpenBadgeDesigner={() => setIsBadgeDesignerOpen(true)}
+                    />
                 ) : (
                     <Suspense fallback={
                         <div className="flex h-64 items-center justify-center text-slate-400">
@@ -43,8 +69,14 @@ const AppContent = () => {
 
             <AddHabitModal 
                 isOpen={isAddHabitOpen} 
-                onClose={() => setIsAddHabitOpen(false)}
-                onSave={addHabit}
+                onClose={handleCloseHabitModal}
+                onSave={handleSaveHabit}
+                initialHabit={editingHabit}
+            />
+
+            <BadgeDesignerModal
+                isOpen={isBadgeDesignerOpen}
+                onClose={() => setIsBadgeDesignerOpen(false)}
             />
         </>
     );

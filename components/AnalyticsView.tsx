@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import Heatmap from './Heatmap';
+import CalendarWidget from './CalendarWidget';
 import { generateAnalyticsInsights } from '../services/geminiService';
 import { Habit, MoodLog, AnalyticsInsights } from '../types';
 import { BrainCircuit, TrendingUp, Calendar, AlertTriangle, RefreshCw } from 'lucide-react';
@@ -113,7 +114,10 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ habits, moodLog }) => {
         </div>
       </div>
 
-      <Heatmap habits={habits} />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+         <CalendarWidget habits={habits} />
+         <Heatmap habits={habits} />
+      </div>
     </div>
   );
 };
