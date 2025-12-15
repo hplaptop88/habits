@@ -1,30 +1,23 @@
 {
   "name": "habit-forge",
+  "version": "1.0.0",
   "private": true,
-  "version": "0.0.0",
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
-  },
   "dependencies": {
-    "recharts": "^2.12.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "lucide-react": "^0.344.0",
-    "@google/genai": "^0.1.1",
     "framer-motion": "^11.0.8",
     "sonner": "^1.4.3",
+    "lucide-react": "^0.344.0",
+    "@google/genai": "^0.2.1",
+    "recharts": "^2.12.0",
     "canvas-confetti": "^1.9.2",
     "date-fns": "^3.3.1",
     "clsx": "^2.1.0",
     "tailwind-merge": "^2.2.1"
   },
   "devDependencies": {
-    "@types/node": "^22.14.0",
-    "@vitejs/plugin-react": "^5.0.0",
-    "typescript": "~5.8.2",
-    "vite": "^6.2.0"
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "typescript": "^5.0.0"
   }
 }
